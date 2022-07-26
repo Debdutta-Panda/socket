@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:socket/ws.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() => runApp(const MyApp());
@@ -31,36 +32,28 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  var incomingMessage = "";
   final TextEditingController _controller = TextEditingController();
   WebSocketChannel? _channel;
+
+  WS? ws;
 
 
   @override
   void initState() {
     super.initState();
-    connect();
-  }
-
-  connect(){
-    _channel = WebSocketChannel.connect(
-      Uri.parse('wss://sockettest.v-xplore.com'),
-    );
-    _channel?.stream.listen(
-            (event) {
-          print("999999999999999");
-          print(event);
-        },
-        onError: (ob,st){
-          print("333333333333333");
-          print(ob);
-        },
-        onDone: (){
-          print(_channel?.closeCode);
-          print(_channel?.closeReason);
-          print("done");
-          connect();
-        }
-    );
+    ws = WS(
+        'wss://sockettest.v-xplore.com',
+      true,
+      onData: (_,data){
+          print(data);
+          setState(() {
+            if(data is String){
+              incomingMessage = data;
+            }
+          });
+      }
+    )..connect();
   }
 
   @override
@@ -80,14 +73,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 decoration: const InputDecoration(labelText: 'Send a message'),
               ),
             ),
+            ElevatedButton(
+                onPressed: (){
+                  ws?.disconnect();
+                },
+                child: Text("Disconnect")
+            ),
             const SizedBox(height: 24),
-            StreamBuilder(
-              stream: _channel?.stream,
-              builder: (context, snapshot) {
-                print(snapshot.data);
-                return Text(snapshot.hasData ? '${snapshot.data}' : '');
-              },
-            )
+            Text(incomingMessage)
           ],
         ),
       ),
@@ -100,9 +93,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _sendMessage() {
-    if (_controller.text.isNotEmpty) {
+    /*if (_controller.text.isNotEmpty) {
       _channel?.sink.add(_controller.text);
-    }
+    }*/
+    ws?.send(_controller.text);
   }
 
   @override
